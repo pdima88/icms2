@@ -1,6 +1,35 @@
 <?php
+
+/**
+ * Class cmsAction
+ * @property cmsRequest $request
+ * @property cmsTemplate $cms_template
+ * @property cmsModel $model
+ * @property cmsDatabase $cms_database
+ * @property cmsForm $cms_form
+ * @property cmsCore $cms_core
+ * @property modelUsers $model_users
+ * @property string $name Controller name
+ * @property string $current_action Current action name
+ * @method redirectToAction($action='', $params=array(), $query=array()) 
+ * @see cmsController::redirectToAction
+ *
+ * @method redirectBack()
+ * @see cmsController::redirectBack
+ *
+ * @method json(array $data)
+ * @method jsonError($err)
+ *
+ * @method redirectToHome()
+ * @see cmsController::redirectToHome
+ *
+ * @method redirectTo($controller, $action='', $params=array(), $query=array(), $code=303)
+ * @see cmsController::redirectTo
+ */
+
 class cmsAction {
 
+    /** @var cmsController */
     protected $controller;
     protected $params;
 

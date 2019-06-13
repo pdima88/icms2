@@ -1,6 +1,6 @@
 <?php
 class cmsCacheMemcached {
-
+    /** @var Memcached */
     private $memcached;
     private $site_namespace;
     private $config;

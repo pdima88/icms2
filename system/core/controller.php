@@ -1,4 +1,15 @@
 <?php
+
+/**
+ * Class cmsController
+ * @property cmsCore $cms_core
+ * @property cmsDatabase $cms_database
+ * @property cmsTemplate $cms_template
+ * @property modelUsers $model_users
+ * @property cmsForm $cms_form
+ * @property cmsModel $model
+ */
+
 class cmsController {
 
     private static $controllers;
@@ -7,6 +18,8 @@ class cmsController {
     public $name;
     public $title;
 	public $model = null;
+
+    /** @var cmsRequest $request */
     public $request;
     public $current_action;
     public $current_params;
