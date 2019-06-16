@@ -650,14 +650,15 @@ function string_get_stopwords($lang='ru') {
  *              s (sentence) - по последнему предложению
  *              w (word) - по последнему слову
  *              пустая строка или любой другой символ - обрезать в любом месте
+ * @param string $allowableTags Оставить эти HTML теги
  * @return string
  */
-function string_short($string, $length = 0, $postfix = '', $type = 's'){
+function string_short($string, $length = 0, $postfix = '', $type = 's', $allowableTags = ''){
 
     // строка может быть без переносов
     // и после strip_tags не будет пробелов между словами
     $string = str_replace(array("\n", "\r", '<br>', '<br/>', '</p>'), ' ', $string);
-    $string = strip_tags($string);
+    $string = strip_tags($string, $allowableTags);
 
     if (!$length || mb_strlen($string) <= $length) { return $string; }
 
@@ -873,7 +874,40 @@ function get_localized_value($field, $data) {
  * Выводит переменную рекурсивно
  * @param mixed $var
 */
-function dump($var, $halt=true){
-    echo '<pre>'; print_r($var); echo '</pre>';
-    if ($halt) { die(); }
+if (!function_exists('dump')) {
+    function dump($var, $halt = true)
+    {
+        echo '<pre>';
+        print_r($var);
+        echo '</pre>';
+        if ($halt) {
+            die();
+        }
+    }
+}
+
+function string_starts($s, $start) {
+    return (strpos($s, $start) === 0);
+}
+
+function string_ends($s, $end) {
+    // http://maettig.com/code/php/php-performance-benchmarks.php
+    return substr($s, -strlen($end)) === $end;
+}
+
+function string_trim($s, $startSubstr, $endSubstr = false) {
+    if ($startSubstr !== false) {
+        $l = strlen($startSubstr);
+        if ($l && (substr($s, 0, $l) === $startSubstr)) {
+            $s = substr($s, $l);
+        }
+    }
+    if ($endSubstr !== false) {
+        if (!isset($endSubstr)) $endSubstr = $startSubstr;
+        $l = strlen($endSubstr);
+        if ($l && (substr($s, -$l) === $endSubstr)) {
+            $s = substr($s,0, -$l);
+        }
+    }
+    return $s;
 }
