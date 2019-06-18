@@ -337,19 +337,23 @@ class admin extends cmsFrontend {
 //============================================================================//
 //============================================================================//
 
-    public function loadControllerBackend($controller_name, $request){
-
-        $ctrl_file = $this->cms_config->root_path . 'system/controllers/'.$controller_name.'/backend.php';
-
-        if(!file_exists($ctrl_file)){
-            cmsCore::error(sprintf(LANG_CP_ERR_BACKEND_NOT_FOUND, $controller_name));
+    public function loadControllerBackend($controller_name, $request) {
+        $rootPath = cmsController::getControllerRootPath($controller_name);
+        if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+            $controller_class =  $ns .'\\backend';
+            $backend = new $controller_class($request, $controller_name);
+            $backend->root_path = $rootPath;
+        } else {
+            $controller_class = 'backend' . ucfirst($controller_name);
+            if (!class_exists($controller_class, false)) {
+                $ctrl_file = $rootPath.'/backend.php';
+                if(!file_exists($ctrl_file)){
+                    cmsCore::error(sprintf(LANG_CP_ERR_BACKEND_NOT_FOUND, $controller_name));
+                }
+                include_once($ctrl_file);
+            }
+            $backend = new $controller_class($request);
         }
-
-        include_once($ctrl_file);
-
-        $controller_class = 'backend'.ucfirst($controller_name);
-
-        $backend = new $controller_class($request);
 
         $backend->controller_admin = $this;
 

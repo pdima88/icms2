@@ -2,6 +2,7 @@
 class cmsModel {
 
     public $name;
+    public $ns;
 
     /** @var cmsDatabase $db */
     public $db;

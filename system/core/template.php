@@ -1523,11 +1523,11 @@ class cmsTemplate {
     public function getControllerTplFilePath($controller_name, $relative_path, $return_abs_path = true) {
 
         $exists = false;
-
-        $file = 'system/controllers/'.$controller_name.'/templates/'.$relative_path;
-        if(is_readable($this->site_config->root_path.$file)){
+        $rootPath = cmsController::getControllerRootPath($controller_name);
+        $file = realpath($rootPath.'/templates/'.$relative_path);
+        if($file && is_readable($file)){
             if($return_abs_path){
-                $exists = $this->site_config->root_path.$file;
+                $exists = $file;
             } else {
                 $exists = $file;
             }

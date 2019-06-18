@@ -858,6 +858,11 @@ class cmsForm {
             return sprintf(ERR_CLASS_NOT_DEFINED, str_replace(PATH, '', $form_file), $form_class);
         }
 
+        return self::createForm($form_class);
+
+    }
+
+    public static function createForm($form_class, $params = false, $controller = null) {
         $form = new $form_class();
 
         if($controller instanceof cmsController){
@@ -872,7 +877,6 @@ class cmsForm {
         }
 
         return $form;
-
     }
 
 }

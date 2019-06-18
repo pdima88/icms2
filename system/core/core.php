@@ -171,11 +171,14 @@ class cmsCore {
     /**
      * Подключает файл
      * @param string $file Путь относительно корня сайта без начального слеша
+     * @param boolean $isAbsPath Указан ли абсолютный путь или относительно корня сайта
      * @return boolean
      */
-    public static function includeFile($file) {
+    public static function includeFile($file, $isAbsPath = false) {
 
-        $file = cmsConfig::get('root_path') . $file;
+        if (!$isAbsPath) {
+            $file = cmsConfig::get('root_path') . $file;
+        }
 
         if (isset(self::$includedFiles[$file])){
             return self::$includedFiles[$file];
@@ -274,9 +277,15 @@ class cmsCore {
      */
     public static function isModelExists($controller){
 
-        $model_file = cmsConfig::get('root_path').'system/controllers/'.$controller.'/model.php';
+        if (false !== ($ns = cmsController::getExtControllerNamespace($controller))) {
+            $modelClass = $ns.'\\model';
+            return class_exists($modelClass);
+        } else {
+            $model_file = cmsConfig::get('root_path') . 'system/controllers/' . $controller . '/model.php';
 
-        return file_exists($model_file);
+            return file_exists($model_file);
+
+        }
 
     }
 
@@ -294,14 +303,24 @@ class cmsCore {
             $controller = end($controller);
 
         }
+        $ns = cmsController::getExtControllerNamespace($controller);
+        if ($ns) {
+            $model_class = $ns.'\\model';
+        } else {
 
-        $model_class = 'model' . string_to_camel($delimitter, $controller);
+            $model_class = 'model' . string_to_camel($delimitter, $controller);
 
-        if (!class_exists($model_class, false)) {
-            self::includeModel($controller);
+            if (!class_exists($model_class, false)) {
+                self::includeModel($controller);
+            }
         }
 
-        return new $model_class();
+        $model = new $model_class();
+        if ($ns) {
+            $model->ns = $ns;
+            $model->name = '';
+        }
+        return $model;
 
     }
 
@@ -350,6 +369,9 @@ class cmsCore {
      */
     public static function isControllerExists($controller_name){
 
+        if (cmsController::getExtControllerNamespace($controller_name)) {
+            return true;
+        }
         return is_dir(cmsConfig::get('root_path').'system/controllers/'.$controller_name);
 
     }
@@ -364,31 +386,43 @@ class cmsCore {
 
         $config = cmsConfig::getInstance();
 
-        $ctrl_file = $config->root_path . 'system/controllers/'.$controller_name.'/frontend.php';
+        if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+            $controller_class = $ns.'\\frontend';
 
-        if (!class_exists($controller_name, false)) {
-            include_once($ctrl_file);
-        }
-
-        $custom_file = $config->root_path . 'system/controllers/'.$controller_name.'/custom.php';
-
-        if(!is_readable($custom_file)){
-            $controller_class = $controller_name;
-        } else {
-            $controller_class = $controller_name . '_custom';
-            if (!class_exists($controller_class, false)){
-                include_once($custom_file);
+            if (!class_exists($controller_class, true)) {
+                return self::error(ERR_COMPONENT_NOT_FOUND . ': ' . str_replace($config->root_path, '', $controller_class));
             }
+            if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
+
+            return new $controller_class($request, $controller_name);
+        } else {
+
+            $ctrl_file = $config->root_path . 'system/controllers/' . $controller_name . '/frontend.php';
+
+            if (!class_exists($controller_name, false)) {
+                include_once($ctrl_file);
+            }
+
+            $custom_file = $config->root_path . 'system/controllers/' . $controller_name . '/custom.php';
+
+            if (!is_readable($custom_file)) {
+                $controller_class = $controller_name;
+            } else {
+                $controller_class = $controller_name . '_custom';
+                if (!class_exists($controller_class, false)) {
+                    include_once($custom_file);
+                }
+            }
+
+
+            if (!class_exists($controller_class, false)) {
+                return self::error(ERR_COMPONENT_NOT_FOUND . ': ' . str_replace($config->root_path, '', $ctrl_file));
+            }
+
+            if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
+
+            return new $controller_class($request);
         }
-
-        if (!class_exists($controller_class, false)) {
-            return self::error(ERR_COMPONENT_NOT_FOUND . ': '. str_replace($config->root_path, '', $ctrl_file));
-        }
-
-        if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
-
-        return new $controller_class($request);
-
     }
 
     public static function getControllerInstance($controller_name, $request=null){
@@ -530,13 +564,20 @@ class cmsCore {
      * Подключает указанный языковой файл.
      * Если файл не указан, то подключаются все PHP-файлы из папки текущего языка
      *
-     * @param string $file Относительный путь к файлу
+     * @param string $file Относительный или абсолютный путь к файлу
      * @param string $default Язык по умолчанию, если в текущем не найдено
+     * @param bool $rootPath Путь к папке с языковыми файлами, если не указан,
+     *              по умолчанию используется system/languages
      * @return boolean
      */
-    public static function loadLanguage($file = false, $default = 'ru') {
+    public static function loadLanguage($file = false, $default = 'ru', $rootPath = null) {
 
-        $lang_dir = 'system/languages/'. self::$language;
+        $is_abs = true;
+        if (!isset($rootPath)) {
+            $rootPath = 'system/languages/';
+            $is_abs = false;
+        }
+        $lang_dir = $rootPath. self::$language;
 
         if (!$file){
 
@@ -549,7 +590,7 @@ class cmsCore {
             // Если файл указан, то подключаем только его
             $lang_file = $lang_dir .'/'.$file.'.php';
 
-            $result = self::includeFile($lang_file);
+            $result = self::includeFile($lang_file, $is_abs);
 
             if(!$result && $default !== self::$language){
                 $result = self::includeFile('system/languages/'. $default .'/'.$file.'.php');
@@ -584,6 +625,11 @@ class cmsCore {
      * @return bool
      */
     public static function loadControllerLanguage($controller_name){
+        if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+
+        } else {
+
+        }
         return self::loadLanguage("controllers/{$controller_name}/{$controller_name}");
     }
 
