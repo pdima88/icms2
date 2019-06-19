@@ -858,7 +858,7 @@ class cmsForm {
             return sprintf(ERR_CLASS_NOT_DEFINED, str_replace(PATH, '', $form_file), $form_class);
         }
 
-        return self::createForm($form_class);
+        return self::createForm($form_class, $params, $controller);
 
     }
 
