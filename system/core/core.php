@@ -394,7 +394,9 @@ class cmsCore {
             }
             if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
 
-            return new $controller_class($request, $controller_name);
+            $controller = new $controller_class($request, $controller_name);
+            $controller->ns =  $ns;
+            return $controller;
         } else {
 
             $ctrl_file = $config->root_path . 'system/controllers/' . $controller_name . '/frontend.php';

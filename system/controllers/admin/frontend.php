@@ -343,6 +343,7 @@ class admin extends cmsFrontend {
             $controller_class =  $ns .'\\backend';
             $backend = new $controller_class($request, $controller_name);
             $backend->root_path = $rootPath;
+            $backend->ns = $controller_class;
         } else {
             $controller_class = 'backend' . ucfirst($controller_name);
             if (!class_exists($controller_class, false)) {

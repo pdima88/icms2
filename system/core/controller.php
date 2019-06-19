@@ -92,8 +92,7 @@ class cmsController {
         self::loadControllers();
 
         $this->name = $this->name ? $this->name : ($name ?? mb_strtolower(get_called_class()));
-        $this->ns = substr(get_called_class(), 0, strrpos(get_called_class(), '\\'));
-
+        
         $this->root_url = $this->name;
 
         $this->root_path = $this->cms_config->root_path . 'system/controllers/' . $this->name . '/';
