@@ -517,26 +517,41 @@ class cmsCore {
         $manifests_events = array();
 
         $controllers = cmsCore::getDirsList('system/controllers', true);
+        $controllers = array_merge($controllers, array_keys(cmsConfig::getExtControllers()));
 
         $index = 0;
 
         foreach($controllers as $controller_name){
 
-            $manifest_file = cmsConfig::get('root_path') . 'system/controllers/' . $controller_name . '/manifest.php';
+            if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+                $manifest = cmsController::getExtControllerManifest($controller_name);
+                $hooks = $manifest->hooks();
 
-            if (!is_readable($manifest_file)){ continue; }
+            } else {
+                $manifest_file = cmsConfig::get('root_path') . 'system/controllers/' . $controller_name . '/manifest.php';
 
-            $manifest = include $manifest_file;
+                if (!is_readable($manifest_file)) {
+                    continue;
+                }
 
-            if (empty($manifest['hooks']) || !is_array($manifest['hooks'])) { continue; }
+                $manifest = include $manifest_file;
+                $hooks = $manifest['hooks'] ?? null;
+            }
 
-            foreach ($manifest['hooks'] as $hook) {
 
-                $manifests_events[ $controller_name ][$index] = $hook;
+
+            if (empty($hooks) || !is_array($hooks)) {
+                continue;
+            }
+
+            foreach ($hooks as $hook) {
+
+                $manifests_events[$controller_name][$index] = $hook;
 
                 $index++;
 
             }
+
 
         }
 
@@ -604,6 +619,26 @@ class cmsCore {
 
     }
 
+
+    /**
+     * Подключает языковой файл внешнего контроллера
+     *
+     * @param string $controller_name Относительный или абсолютный путь к файлу
+     * @param string $default Язык по умолчанию, если в текущем не найдено
+     * @return boolean
+     */
+    public static function loadExtControllerLanguage($controller_name, $default = 'ru') {
+        $rootPath = cmsController::getControllerRootPath($controller_name);
+
+        $result = self::includeFile( $rootPath.'/lang/'. self::$language.'.php', true);
+
+        if(!$result && $default !== self::$language){
+            $result = self::includeFile($rootPath.'/lang/'. $default.'.php');
+        }
+
+        return $result;
+    }
+
     /**
      * Возвращает содержимое текстового файла из папки с текущим языком
      * @param string $file
@@ -628,9 +663,7 @@ class cmsCore {
      */
     public static function loadControllerLanguage($controller_name){
         if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
-
-        } else {
-
+            return self::loadExtControllerLanguage($controller_name);
         }
         return self::loadLanguage("controllers/{$controller_name}/{$controller_name}");
     }
@@ -670,6 +703,11 @@ class cmsCore {
 
         foreach($controllers as $controller_name){
             self::loadControllerLanguage($controller_name);
+        }
+
+        $extControllers = cmsConfig::getExtControllers();
+        foreach ($extControllers as $controller_name => $ns) {
+            self::loadExtControllerLanguage($controller_name);
         }
 
     }
@@ -934,22 +972,37 @@ class cmsCore {
 
     }
 
+    public static function getWidgetClassName($widget_controller, $widget_name){
+        $ns = false;
+        if ($widget_controller) {
+            $ns = cmsController::getExtControllerNamespace($widget_controller);
+        }
+
+
+        if ($ns) {
+            $class = $ns.'\\widgets\\'.$widget_name.'\\widget';
+        } else {
+            $file = 'system/' . cmsCore::getWidgetPath($widget_name, $widget_controller) . '/widget.php';
+
+            $class = 'widget' .
+                ($widget_controller ? string_to_camel('_', $widget_controller) : '') .
+                string_to_camel('_', $widget_name);
+
+            if (!class_exists($class, false)) {
+                cmsCore::includeFile($file);
+                cmsCore::loadWidgetLanguage($widget_name, $widget_controller);
+            }
+        }
+
+        return $class;
+    }
+
     public function runWidget($widget){
 
         $result = false;
 
-        $file = 'system/'.cmsCore::getWidgetPath($widget['name'], $widget['controller']).'/widget.php';
-
-        $class = 'widget' .
-                    ($widget['controller'] ? string_to_camel('_', $widget['controller']) : '') .
-                    string_to_camel('_', $widget['name']);
-
-        if (!class_exists($class, false)) {
-            cmsCore::includeFile($file);
-            cmsCore::loadWidgetLanguage($widget['name'], $widget['controller']);
-        }
-
-        $widget_object = new $class($widget);
+        $widget_class = self::getWidgetClassName($widget['controller'], $widget['name']);
+        $widget_object = new $widget_class($widget);
 
         $cache_key = 'widgets'.$widget['id'];
         $cache = cmsCache::getInstance();

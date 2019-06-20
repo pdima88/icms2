@@ -560,16 +560,26 @@ class admin extends cmsFrontend {
         if(!$template){
             $template = $this->cms_config->template;
         }
+        $form = null;
+        $widget_path = cmsCore::getWidgetPath($widget_name, $controller_name);
 
-		$widget_path = cmsCore::getWidgetPath($widget_name, $controller_name);
+        if ($controller_name && false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+            $form_class = $ns.'\\widgets\\'.$widget_name.'\\form_options';
+            if (class_exists($form_class)) {
+                $form = cmsForm::createForm($form_class, array($options, $template));
+            }
+        } else {
 
-        $path = $this->cms_config->system_path . $widget_path;
+            $path = $this->cms_config->system_path . $widget_path;
 
-        $form_file = $path . '/options.form.php';
+            $form_file = $path . '/options.form.php';
 
-        $form_name = 'widget' . ($controller_name ? "_{$controller_name}_" : '_') . "{$widget_name}_options";
+            $form_name = 'widget' . ($controller_name ? "_{$controller_name}_" : '_') . "{$widget_name}_options";
 
-        $form = cmsForm::getForm($form_file, $form_name, array($options, $template));
+            $form = cmsForm::getForm($form_file, $form_name, array($options, $template));
+
+        }
+
         if (!$form) { $form = new cmsForm(); }
 
         $form->is_tabbed = true;

@@ -1534,7 +1534,7 @@ class cmsTemplate {
         }
 
         if(!$exists){
-            $this->not_found_tpls[] = $file;
+            $this->not_found_tpls[] = $file ?: $rootPath.'/templates/'.$relative_path;
         }
 
         return $exists;
@@ -2474,14 +2474,22 @@ class cmsTemplate {
     public function renderWidget($widget, $data = array()) {
 
         $tpl_path = cmsCore::getWidgetPath($widget->name, $widget->controller);
+        $tpl_file = $this->getTemplateFileName($tpl_path . '/' . $widget->getTemplate(), true);
 
-        $tpl_file = $this->getTemplateFileName($tpl_path . '/' . $widget->getTemplate());
+        if (!$tpl_file && $widget->controller) {
+            $tpl_file = $this->getControllerTemplateFileName($widget->controller, 'widgets/'.$widget->name.'/' . $widget->getTemplate(), true);
+        }
+
+
+
 
         $hook_name = 'render_wdget_'.($widget->controller ? $widget->controller.'_' : '').$widget->name.'_'.basename(str_replace('-', '_', $tpl_file), '.tpl.php');
 
         list($widget, $tpl_file, $data) = cmsEventsManager::hook($hook_name, [$widget, $tpl_file, $data]);
 
         extract($data);
+
+        if (!$tpl_file) return $this;
 
         ob_start(); include($tpl_file);
 
@@ -2495,7 +2503,7 @@ class cmsTemplate {
 
         $this->widgets[$widget->position][$this->widgets_group_index][] = array(
             'id'          => $widget->id,
-            'bind_id'     => $widget->bind_id,
+            'bind_id'     => $widget->bind_id ?? null,
             'title'       => $widget->is_title ? $widget->title : false,
             'links'       => isset($widget->links) ? $widget->links : false,
             'wrapper'     => $widget->getWrapper(),

@@ -696,26 +696,35 @@ class cmsController {
             $result = call_user_func_array(array($this, $method_name), $params);
 
         } else {
-
-            // если метода хука нет, проверяем наличие его в отдельном файле
-            $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
-
-            if (is_readable($hook_file)){
-
-                // вызываем хук из отдельного файла
-                $result = $this->runExternalHook($event_name, $params);
-
+            $has_hook = false;
+            if ($this->ns) {
+                $hook_class = $this->ns.'\\hooks\\'.$event_name;
+                if (class_exists($hook_class)) {
+                    $result = $this->runExternalHook($event_name, $params);
+                    $has_hook = true;
+                }
             } else {
 
-                // хука нет вообще, возвращаем данные запроса без изменений
-                if($default === null){
-                    return $this->request->getData();
-                } else {
-                    return $default;
+                // если метода хука нет, проверяем наличие его в отдельном файле
+                $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
+
+                if (is_readable($hook_file)) {
+
+                    // вызываем хук из отдельного файла
+                    $result = $this->runExternalHook($event_name, $params);
+                    $has_hook = true;
                 }
 
             }
 
+            if (!$has_hook) {
+                // хука нет вообще, возвращаем данные запроса без изменений
+                if ($default === null) {
+                    return $this->request->getData();
+                } else {
+                    return $default;
+                }
+            }
         }
 
         $this->afterHook($event_name);
@@ -732,14 +741,18 @@ class cmsController {
      */
     public function runExternalHook($event_name, $params = array()){
 
-        $class_name = 'on' . string_to_camel('_', $this->name) . string_to_camel('_', $event_name);
+        if ($this->ns) {
+            $class_name = $this->ns.'\\hooks\\'.$event_name;
+        } else {
+            $class_name = 'on' . string_to_camel('_', $this->name) . string_to_camel('_', $event_name);
+            
+            if (!class_exists($class_name, false)) {
 
-        if (!class_exists($class_name, false)){
+                $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
 
-            $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
+                include_once $hook_file;
 
-            include_once $hook_file;
-
+            }
         }
 
         $hook_object = new $class_name($this);

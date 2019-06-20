@@ -22,7 +22,7 @@ class cmsWidget {
             $this->{$field} = $value;
         }
 
-        $this->css_class       = $widget['class'];
+        $this->css_class       = $widget['class'] ?? '';
         $this->css_class_title = empty($widget['class_title']) ? '' : $widget['class_title'];
         $this->css_class_wrap  = empty($widget['class_wrap']) ? '' : $widget['class_wrap'];
         $this->template        = $this->name;
@@ -38,6 +38,7 @@ class cmsWidget {
     }
 
     public function getOption($key, $default = false){
+        if (!is_array($this->options)) return $default;
         return array_key_exists($key, $this->options) ? $this->options[$key] : $default;
     }
 
