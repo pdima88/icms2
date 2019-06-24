@@ -241,6 +241,14 @@ class cmsDatabase {
 		return $this->mysqli->real_escape_string($string);
 	}
 
+    public function replacePrefix($sql) {
+        return str_replace(array(
+            '{#}{users}', '{users}', '{#}'
+        ), array(
+            $this->options['db_users_table'], $this->options['db_users_table'], $this->prefix
+        ), $sql);
+    }
+
     /**
      * Выполняет запрос в базе
      * @param string $sql Строка запроса
@@ -254,11 +262,7 @@ class cmsDatabase {
             cmsDebugging::pointStart('db');
         }
 
-        $sql = str_replace(array(
-            '{#}{users}', '{users}', '{#}'
-        ), array(
-            $this->options['db_users_table'], $this->options['db_users_table'], $this->prefix
-        ), $sql);
+        $sql = $this->replacePrefix($sql);
 
         if ($params){
 
