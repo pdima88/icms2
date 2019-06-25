@@ -8,6 +8,8 @@
  * @property modelUsers $model_users
  * @property cmsForm $cms_form
  * @property cmsModel $model
+ * @property modelModeration $model_moderation
+ * @property cmsUser $cms_user
  */
 
 class cmsController {
