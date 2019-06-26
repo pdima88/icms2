@@ -1,4 +1,8 @@
 <?php
+
+/**
+ * @property modelModeration $model
+ */
 class moderation extends cmsFrontend {
 
     protected $useOptions = true;

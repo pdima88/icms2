@@ -11,6 +11,11 @@
  * @property modelUsers $model_users
  * @property string $name Controller name
  * @property string $current_action Current action name
+ * @property cmsController $controller
+ * @property cmsUser $cms_user
+ * @property modelModeration $model_moderation
+ * @property moderation $controller_moderation
+ *
  * @method redirectToAction($action='', $params=array(), $query=array()) 
  * @see cmsController::redirectToAction
  *
