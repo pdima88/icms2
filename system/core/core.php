@@ -392,7 +392,6 @@ class cmsCore {
             if (!class_exists($controller_class, true)) {
                 return self::error(ERR_COMPONENT_NOT_FOUND . ': ' . str_replace($config->root_path, '', $controller_class));
             }
-            if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
 
             $controller = new $controller_class($request, $controller_name);
             $controller->ns =  $ns;
@@ -420,8 +419,6 @@ class cmsCore {
             if (!class_exists($controller_class, false)) {
                 return self::error(ERR_COMPONENT_NOT_FOUND . ': ' . str_replace($config->root_path, '', $ctrl_file));
             }
-
-            if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
 
             return new $controller_class($request);
         }
