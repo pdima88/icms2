@@ -10,6 +10,7 @@
  * @property cmsModel $model
  * @property modelModeration $model_moderation
  * @property cmsUser $cms_user
+ * @property messages $controller_messages
  */
 
 class cmsController {
