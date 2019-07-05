@@ -89,16 +89,22 @@ class cmsController {
      */
     protected $unknown_action_as_index_param = false;
 
-    function __construct( cmsRequest $request, $name = null){
+    function __construct( cmsRequest $request = null, $name = null){
 
         self::loadControllers();
 
-        $this->name = $this->name ? $this->name : ($name ?? mb_strtolower(get_called_class()));
+        $low_class_name = mb_strtolower(get_called_class());
+        if (!isset($name)) {
+            $name = static::getExtControllerName();
+            if ($name === false) $name = cmsCore::getControllerAliasByName($low_class_name);
+        }       
+        $this->name = $this->name ?: ($name ?: $low_class_name);
         
         $this->root_url = $this->name;
 
         $this->root_path = $this->cms_config->root_path . 'system/controllers/' . $this->name . '/';
 
+        if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
         $this->setRequest($request);
 
         cmsCore::loadControllerLanguage($this->name);
@@ -1399,6 +1405,34 @@ class cmsController {
         $extControllers = cmsConfig::getExtControllers();
         return $extControllers[$controllerName] ?? false;
     }
+
+    static function getExtControllerName($namespace = null) {
+        if (!isset($namespace)) {
+            $class_name = get_called_class();
+            $namespace = str_replace('\\frontend', '', $class_name);
+            if ($namespace == $class_name) return false;
+        }
+        $extControllers = cmsConfig::getExtControllers();
+        foreach ($extControllers as $controllerName => $controllerNs) {
+            if ($controllerNs == $namespace) {
+                return $controllerName;
+            }        
+        } 
+        return false;
+    }
+
+    /**
+     * Создает и возвращает объект контроллера
+     *
+     * @param cmsRequest $request
+     * @return static
+     */
+    static function getInstance($request = null) {        
+        return new static($request);
+    }
+
+
+    
 
     static function getControllerRootPath($controllerName) {
         if (false !== ($ns = self::getExtControllerNamespace($controllerName))) {
