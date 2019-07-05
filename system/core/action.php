@@ -15,6 +15,7 @@
  * @property cmsUser $cms_user
  * @property modelModeration $model_moderation
  * @property moderation $controller_moderation
+ * @property messages $controller_messages
  *
  * @method redirectToAction($action='', $params=array(), $query=array()) 
  * @see cmsController::redirectToAction
