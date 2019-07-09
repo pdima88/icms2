@@ -98,6 +98,11 @@ class cmsController {
         if (!isset($name)) {
             $name = static::getExtControllerName();
             if ($name === false) $name = cmsCore::getControllerAliasByName($low_class_name);
+            else {
+                $class_name = get_called_class();
+                $this->ns = str_replace('\\frontend', '', $class_name);
+            }
+
         }       
         $this->name = $this->name ?: ($name ?: $low_class_name);
         
