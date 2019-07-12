@@ -819,10 +819,17 @@ class cmsController {
 
     public function getControllerForm($controller, $form_name, $params = false){
 
-        $form_file = $this->cms_config->root_path.'system/controllers/'.$controller.'/forms/form_'.$form_name.'.php';
-        $_form_name = $controller . $form_name;
+        $ns = cmsController::getExtControllerNamespace($controller);
+        if ($ns) {
+            $form_class = $ns.'\\forms\\form_'.$form_name;
 
-        $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+            $form = cmsForm::createForm($form_class, $params, $this);
+        } else {
+            $form_file = $this->cms_config->root_path.'system/controllers/'.$controller.'/forms/form_'.$form_name.'.php';
+            $_form_name = $controller . $form_name;
+
+            $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+        }
 
         if($form === false){
             cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $form_file));
