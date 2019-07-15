@@ -8,6 +8,7 @@
  * @property modelUsers $model_users
  * @property cmsForm $cms_form
  * @property cmsModel $model
+ * @property moderation $controller_moderation
  * @property modelModeration $model_moderation
  * @property cmsUser $cms_user
  * @property messages $controller_messages
@@ -18,13 +19,18 @@ class cmsController {
     private static $controllers;
     private static $mapping;
 
+    /** @var string $name Имя контроллера */
     public $name;
+
     public $title;
 	public $model = null;
 
-    /** @var cmsRequest $request */
+    /** @var cmsRequest */
     public $request;
+
+    /** @var string $current_action Имя текущего экшена */
     public $current_action;
+
     public $current_params;
     public $options;
     public $root_url;
