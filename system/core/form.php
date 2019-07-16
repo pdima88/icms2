@@ -196,6 +196,30 @@ class cmsForm {
 
     }
 
+    /**
+     * Возвращает поле с указанным именем, или null если такого поля нет в форме
+     * @param string $name Имя поля
+     * @return cmsFormField
+     */
+    public function getField($name) {
+        foreach ($this->structure as $fieldset) {
+            /** @var cmsFormField $field */
+            foreach ($fieldset['childs'] as $field) {
+                if ($field->getName() == $name) return $field;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Присутствует ли поле с указанным именем в форме
+     * @param string $name Имя поля
+     * @return bool
+     */
+    public function hasField($name) {
+        return $this->getField($name) !== null;
+    }
+
 //============================================================================//
 //============================================================================//
 
