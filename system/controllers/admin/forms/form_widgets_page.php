@@ -1,7 +1,10 @@
 <?php
 class formAdminWidgetsPage extends cmsForm {
 
-    public function init() {
+    public function init($template = null) {
+        if (!$template) {
+            $template = $this->controller->cms_config->template;
+        }
 
         return array(
             'title' => array(
@@ -16,6 +19,30 @@ class formAdminWidgetsPage extends cmsForm {
                     )),
                 )
             ),
+            'params' => [
+                'type' => 'fieldset',
+                'title' => 'Параметры отображения',
+                'childs' => [
+                    new fieldList('layout', [
+                        'title' => 'Шаблон',
+                        'generator' => function() use ($template){
+                            $layouts = cmsTemplate::getInstance()->getAvailableTemplatesFiles('', '*.tpl.php', $template);
+                            $items = ['' => '(По умолчанию)'];
+                            if ($layouts) {
+                                foreach ($layouts as $layout) {
+                                    if($layout == 'admin'){ continue; }
+                                    $items[$layout] = string_lang('LANG_'.$template.'_THEME_LAYOUT_'.$layout, $layout);
+                                }
+                            }
+                            return $items;
+                        }
+                    ]),
+                    new fieldNumber('priority', [
+                        'title' => 'Приоритет',
+                        'hint' => 'При выборе шаблона отображения используется подходящая страница с наибольшим значением приоритета',
+                    ])
+                ]
+            ],
             'urls' => array(
                 'type' => 'fieldset',
                 'title' => LANG_CP_WIDGET_PAGE_URLS,
