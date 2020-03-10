@@ -502,19 +502,24 @@ class admin extends cmsFrontend {
 //============================================================================//
 //============================================================================//
 
-    public function loadControllerBackend($controller_name, $request){
-
-        $ctrl_file = $this->cms_config->root_path . 'system/controllers/'.$controller_name.'/backend.php';
-
-        if(!file_exists($ctrl_file)){
-            cmsCore::error(sprintf(LANG_CP_ERR_BACKEND_NOT_FOUND, $controller_name));
+    public function loadControllerBackend($controller_name, $request) {
+        $rootPath = cmsController::getControllerRootPath($controller_name);
+        if (false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+            $controller_class =  $ns .'\\backend';
+            $backend = new $controller_class($request, $controller_name);
+            $backend->root_path = $rootPath;
+            $backend->ns = $controller_class;
+        } else {
+            $controller_class = 'backend' . ucfirst($controller_name);
+            if (!class_exists($controller_class, false)) {
+                $ctrl_file = $rootPath.'/backend.php';
+                if(!file_exists($ctrl_file)){
+                    cmsCore::error(sprintf(LANG_CP_ERR_BACKEND_NOT_FOUND, $controller_name));
+                }
+                include_once($ctrl_file);
+            }
+            $backend = new $controller_class($request);
         }
-
-        include_once($ctrl_file);
-
-        $controller_class = 'backend'.ucfirst($controller_name);
-
-        $backend = new $controller_class($request);
 
         $backend->controller_admin = $this;
 
@@ -727,15 +732,26 @@ class admin extends cmsFrontend {
             $template = $this->cms_config->template;
         }
 
-		$widget_path = cmsCore::getWidgetPath($widget_name, $controller_name);
+		$form = null;
+        $widget_path = cmsCore::getWidgetPath($widget_name, $controller_name);
 
-        $path = $this->cms_config->system_path . $widget_path;
+        if ($controller_name && false !== ($ns = cmsController::getExtControllerNamespace($controller_name))) {
+            $form_class = $ns.'\\widgets\\'.$widget_name.'\\form_options';
+            if (class_exists($form_class)) {
+                $form = cmsForm::createForm($form_class, array($options, $template));
+            }
+        } else {
 
-        $form_file = $path . '/options.form.php';
+            $path = $this->cms_config->system_path . $widget_path;
 
-        $form_name = 'widget' . ($controller_name ? "_{$controller_name}_" : '_') . "{$widget_name}_options";
+            $form_file = $path . '/options.form.php';
 
-        $form = cmsForm::getForm($form_file, $form_name, array($options, $template));
+            $form_name = 'widget' . ($controller_name ? "_{$controller_name}_" : '_') . "{$widget_name}_options";
+
+            $form = cmsForm::getForm($form_file, $form_name, array($options, $template));
+
+        }
+
         if (!$form) { $form = new cmsForm(); }
 
         $form->is_tabbed = true;

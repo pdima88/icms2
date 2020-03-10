@@ -14,6 +14,7 @@ class cmsConfig {
 
     private static $instance = null;
     private static $mapping  = null;
+    private static $extControllers = null;
 
     private $ready   = false;
     private $data    = array();
@@ -48,6 +49,27 @@ class cmsConfig {
         if (!is_array(self::$mapping)){ return array(); }
 
         return self::$mapping;
+
+    }
+
+    public static function getExtControllers(){
+
+        if (self::$extControllers !== null) { return self::$extControllers; }
+
+        self::$extControllers = array();
+
+        $map_file = 'system/config/remap.php';
+        $map_function = 'ext_controllers';
+
+        if (!cmsCore::includeFile($map_file)) { return self::$extControllers; }
+
+        if (!function_exists($map_function)){ return self::$extControllers; }
+
+        self::$extControllers = call_user_func($map_function);
+
+        if (!is_array(self::$extControllers)){ return array(); }
+
+        return self::$extControllers;
 
     }
 

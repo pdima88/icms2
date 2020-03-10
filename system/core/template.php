@@ -1772,6 +1772,34 @@ class cmsTemplate {
 
     }
 
+    /**
+     * Возвращает путь к файлу шаблона внутри папки templates контроллера
+     * @param string $controller_name Имя контроллера
+     * @param string $relative_path Путь относительно папки templates внутри папки контроллера. Без первого слеша
+     * @param boolean $return_abs_path Возвращать полный путь в файловой системе, по умолчанию true
+     * @return string | boolean
+     */
+    public function getControllerTplFilePath($controller_name, $relative_path, $return_abs_path = true) {
+
+        $exists = false;
+        $rootPath = cmsController::getControllerRootPath($controller_name);
+        $file = realpath($rootPath.'/templates/'.$relative_path);
+        if($file && is_readable($file)){
+            if($return_abs_path){
+                $exists = $file;
+            } else {
+                $exists = $file;
+            }
+        }
+
+        if(!$exists){
+            $this->not_found_tpls[] = $file ?: $rootPath.'/templates/'.$relative_path;
+        }
+
+        return $exists;
+
+    }
+
 // ========================================================================== //
 // ========================================================================== //
 
@@ -1818,6 +1846,30 @@ class cmsTemplate {
     public function getTemplateFileName($filename, $is_check = false){
 
         $tpl_file = $this->getTplFilePath($filename.'.tpl.php');
+
+        if (!$tpl_file){
+            if (!$is_check){
+                $last_not_found_tpl = end($this->not_found_tpls);
+                cmsCore::error(ERR_TEMPLATE_NOT_FOUND . ': ' . $this->site_config->root.$last_not_found_tpl);
+            } else {
+                return false;
+            }
+        }
+
+        return $tpl_file;
+
+    }
+
+    /**
+     * Возвращает путь к tpl-файлу, определяя его наличие в папке templates внутри папки контроллера
+     * @param string $controller_name Имя контроллера
+     * @param string $filename Путь относительно папки templates контроллера
+     * @param boolean $is_check Если true, то не выдаст фатальную ошибку в случае отсутствия файла
+     * @return string
+     */
+    public function getControllerTemplateFileName($controller_name, $filename, $is_check = false){
+
+        $tpl_file = $this->getControllerTplFilePath($controller_name, $filename.'.tpl.php');
 
         if (!$tpl_file){
             if (!$is_check){
@@ -1990,9 +2042,12 @@ class cmsTemplate {
             if ($css_file){ $this->addCSSFromContext($css_file, $request); }
         }
 
-        $tpl_file = $this->getTemplateFileName('controllers/'.$this->controller->name.'/'.$tpl_file);
+        $tpl_file_path = $this->getTemplateFileName('controllers/'.$this->controller->name.'/'.$tpl_file, true);
+        if ($tpl_file_path === false) {
+            $tpl_file_path = $this->getControllerTemplateFileName($this->controller->name, $tpl_file);
+        }
 
-        return $this->processRender($tpl_file, $data, $request);
+        return $this->processRender($tpl_file_path, $data, $request);
 
     }
 
@@ -2079,13 +2134,16 @@ class cmsTemplate {
 
         if (!$request) { $request = $this->controller->request; }
 
-        $tpl_file = $this->getTemplateFileName('controllers/'.$controller_name.'/'.$tpl_file);
+        $tpl_file_path = $this->getTemplateFileName('controllers/'.$controller_name.'/'.$tpl_file, true);
+        if ($tpl_file_path === false) {
+            $tpl_file_path = $this->getControllerTemplateFileName($controller_name, $tpl_file);
+        }
 
         $hook_name = 'process_render_'.$controller_name.'_'.basename(str_replace('-', '_', $tpl_file), '.tpl.php');
 
-        list($tpl_file, $data, $request) = cmsEventsManager::hook($hook_name, [$tpl_file, $data, $request]);
+        list($tpl_file_path, $data, $request) = cmsEventsManager::hook($hook_name, [$tpl_file_path, $data, $request]);
 
-        extract($data); include($tpl_file);
+        extract($data); include($tpl_file_path);
 
     }
 
@@ -2756,14 +2814,20 @@ class cmsTemplate {
     public function renderWidget($widget, $data = array()) {
 
         $tpl_path = cmsCore::getWidgetPath($widget->name, $widget->controller);
+        $tpl_file = $this->getTemplateFileName($tpl_path . '/' . $widget->getTemplate(), true);
 
-        $tpl_file = $this->getTemplateFileName($tpl_path . '/' . $widget->getTemplate());
+        if (!$tpl_file && $widget->controller) {
+            $tpl_file = $this->getControllerTemplateFileName($widget->controller, 'widgets/'.$widget->name.'/' . $widget->getTemplate(), true);
+        }
+
 
         $hook_name = 'render_widget_'.($widget->controller ? $widget->controller.'_' : '').$widget->name.'_'.basename(str_replace('-', '_', $tpl_file), '.tpl.php');
 
         list($widget, $tpl_file, $data) = cmsEventsManager::hook($hook_name, [$widget, $tpl_file, $data]);
 
         extract($data);
+
+        if (!$tpl_file) return $this;
 
         ob_start(); include($tpl_file);
 
@@ -2777,7 +2841,7 @@ class cmsTemplate {
 
         $this->widgets[$widget->position][$this->widgets_group_index][] = array(
             'id'          => $widget->id,
-            'bind_id'     => $widget->bind_id,
+            'bind_id'     => $widget->bind_id ?? null,
             'title'       => $widget->is_title ? $widget->title : false,
             'links'       => isset($widget->links) ? $widget->links : false,
             'wrapper'     => $widget->getWrapper(),

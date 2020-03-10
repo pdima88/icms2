@@ -2,6 +2,7 @@
 class cmsModel {
 
     public $name;
+    public $ns;
 
     public $db;
 
@@ -86,7 +87,15 @@ class cmsModel {
 
     public function __construct(){
 
-        $this->name = strtolower(str_replace('model', '', get_called_class()));
+        $class_name = get_called_class();
+              
+        $ns = str_replace('\\model','',$class_name);
+        if ($ns && $ns != $class_name) {
+            $this->ns = $ns;
+            $this->name = '';
+        } else {
+            $this->name = strtolower(str_replace('model', '', $class_name));  
+        }
 
         $this->db = cmsCore::getInstance()->db;
 
@@ -96,6 +105,15 @@ class cmsModel {
         $this->localized = self::$global_localized;
 
 	}
+
+    /**
+     * Возвращает объект модели
+     * 
+     * @return static
+     */
+    static function getInstance() {
+       return new static();
+    }
 
 //============================================================================//
 //============================================================================//
