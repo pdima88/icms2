@@ -98,7 +98,7 @@ class cmsController {
      */
     protected $unknown_action_as_index_param = false;
 
-    public function __construct( cmsRequest $request, $name = null){
+    public function __construct( cmsRequest $request = null, $name = null){
 
         $low_class_name = mb_strtolower(get_called_class());
         if (!isset($name)) {
