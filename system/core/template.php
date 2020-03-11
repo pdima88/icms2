@@ -52,6 +52,14 @@ class cmsTemplate {
     protected $controller;
     protected $controllers_queue = array();
 
+    protected static $_renderOnce = [];
+
+    public static function renderOnce($id) {
+        $r = self::$_renderOnce[$id] ?? true;
+        self::$_renderOnce[$id] = false;
+        return $r;
+    }
+
     public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new self;
@@ -62,6 +70,7 @@ class cmsTemplate {
         }
         return self::$instance;
     }
+
 
 // ========================================================================== //
 // ========================================================================== //
