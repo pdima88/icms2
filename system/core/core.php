@@ -968,6 +968,9 @@ class cmsCore {
 
         $_full_uri = $this->uri.($this->uri_query ? '?'.http_build_query($this->uri_query) : '');
 
+        $layout = null;
+        $maxPriority = -1;
+
         //
         // Перебираем все точки привязок и проверяем совпадение
         // маски URL с текущим URL
@@ -997,9 +1000,12 @@ class cmsCore {
 
             if ($is_mask_match && !$is_stop_match){
                 $matched_pages[$page['id']] = $page;
+                if ($page['layout'] && $page['priority'] > $maxPriority) $layout = $page['layout'];
             }
 
         }
+
+        if ($layout) cmsTemplate::getInstance()->setLayout($layout);
 
         return $matched_pages;
 
