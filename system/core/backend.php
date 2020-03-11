@@ -16,9 +16,9 @@ class cmsBackend extends cmsController {
     protected $useDefaultModerationAction = false;
     protected $useModerationTrash = false;
 
-    public function __construct( cmsRequest $request){
+    public function __construct( cmsRequest $request, $name = null){
 
-        $this->name = str_replace('backend', '', strtolower(get_called_class()));
+        $this->name = $name ?? str_replace('backend', '', strtolower(get_called_class()));
 
         parent::__construct($request);
 

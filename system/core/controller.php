@@ -35,6 +35,7 @@ class cmsController {
     public $options;
     public $root_url;
     public $root_path;
+    public $ns = false;
 
     /**
      * Контекст списка записей
@@ -97,16 +98,25 @@ class cmsController {
      */
     protected $unknown_action_as_index_param = false;
 
-    public function __construct( cmsRequest $request){
+    public function __construct( cmsRequest $request, $name = null){
 
-        self::loadControllers();
+        $low_class_name = mb_strtolower(get_called_class());
+        if (!isset($name)) {
+            $name = static::getExtControllerName();
+            if ($name === false) $name = cmsCore::getControllerAliasByName($low_class_name);
+            else {
+                $class_name = get_called_class();
+                $this->ns = str_replace('\\frontend', '', $class_name);
+            }
 
-        $this->name = $this->name ? $this->name : mb_strtolower(get_called_class());
-
+        }       
+        $this->name = $this->name ?: ($name ?: $low_class_name);
+        
         $this->root_url = $this->name;
 
         $this->root_path = $this->cms_config->root_path . 'system/controllers/' . $this->name . '/';
 
+        if (!$request) { $request = new cmsRequest(array(), cmsRequest::CTX_INTERNAL); }
         $this->setRequest($request);
 
         cmsCore::loadControllerLanguage($this->name);
@@ -426,10 +436,15 @@ class cmsController {
             return true;
         }
 
-        $action_file = $this->getExternalActionPath($action_name);
+        if ($this->ns) {
+            $action_class = $this->ns.'\\actions\\'.$action_name;
+            return class_exists($action_class);
+        } else {
+            $action_file = $this->getExternalActionPath($action_name);
 
-        if (is_readable($action_file)){
-            return true;
+            if (is_readable($action_file)) {
+                return true;
+            }
         }
 
         return false;
@@ -468,47 +483,60 @@ class cmsController {
 
         $method_name = 'action' . string_to_camel('_', $action_name);
 
-        // проверяем наличие экшена его в отдельном файле
-        $action_file = $this->getExternalActionPath($action_name);
-
-        if(is_readable($action_file)){
-
-            // вызываем экшен из отдельного файла
-            $result = $this->runExternalAction($action_name, $params);
-
-        } else {
-
-            // Если файла нет, ищем метод класса
+        if (false !== ($ns = self::getExtControllerNamespace($this->name))) {
             if (method_exists($this, $method_name)){
-
                 if (!$this->validateParamsCount($this, $method_name, $params)) { cmsCore::error404(); }
 
                 // сохраняем название текущего экшена
-                $this->setCurrentAction($action_name);
+                $this->current_action = $action_name;
 
                 // если есть нужный экшен, то вызываем его
                 $result = call_user_func_array(array($this, $method_name), $params);
+            } else {
+                $result = $this->runExternalAction($action_name, $params);
+            }
+        } else {
 
+            // проверяем наличие экшена его в отдельном файле
+            $action_file = $this->getExternalActionPath($action_name);
+    
+            if(is_readable($action_file)){
+    
+                // вызываем экшен из отдельного файла
+                $result = $this->runExternalAction($action_name, $params);
+    
             } else {
 
-                // если нет экшена в отдельном файле,
-                // проверяем метод route()
-                if(method_exists($this, 'route')){
-
-                    $route_uri = $action_name;
-                    if ($params) { $route_uri .= '/' . implode('/', $params); }
-                    $result = call_user_func(array($this, 'route'), $route_uri);
-
+                // Если файла нет, ищем метод класса
+                if (method_exists($this, $method_name)){
+    
+                    if (!$this->validateParamsCount($this, $method_name, $params)) { cmsCore::error404(); }
+    
+                    // сохраняем название текущего экшена
+                    $this->setCurrentAction($action_name);
+    
+                    // если есть нужный экшен, то вызываем его
+                    $result = call_user_func_array(array($this, $method_name), $params);
+    
                 } else {
-
-                    // если метода route() тоже нет,
-                    // то 404
-                    cmsCore::error404();
-
+    
+                    // если нет экшена в отдельном файле,
+                    // проверяем метод route()
+                    if(method_exists($this, 'route')){
+    
+                        $route_uri = $action_name;
+                        if ($params) { $route_uri .= '/' . implode('/', $params); }
+                        $result = call_user_func(array($this, 'route'), $route_uri);
+    
+                    } else {
+    
+                        // если метода route() тоже нет,
+                        // то 404
+                        cmsCore::error404();
+    
+                    }    
                 }
-
             }
-
         }
 
         return $result;
@@ -567,25 +595,33 @@ class cmsController {
      */
     public function runExternalAction($action_name, $params = array()){
 
-        $action_file = $this->getExternalActionPath($action_name);
+        if ($this->ns) {
+            $class_name = $this->ns . '\\actions\\' . $action_name;
+            if (!class_exists($class_name)) {
+                cmsCore::error404();
+            }
+        } else {
 
-        $class_name = 'action' . string_to_camel('_', $this->name) . string_to_camel('_', $action_name);
-
-        if (!is_readable($action_file)){
-            cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $action_file));
+            $action_file = $this->getExternalActionPath($action_name);
+    
+            $class_name = 'action' . string_to_camel('_', $this->name) . string_to_camel('_', $action_name);
+    
+            if (!is_readable($action_file)){
+                cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $action_file));
+            }
+    
+            include_once $action_file;
+    
+            if(!class_exists($class_name, false)){
+                cmsCore::error(sprintf(ERR_CLASS_NOT_DEFINED, str_replace(PATH, '', $action_file), $class_name));
+            }
         }
-
-        include_once $action_file;
-
-        if(!class_exists($class_name, false)){
-            cmsCore::error(sprintf(ERR_CLASS_NOT_DEFINED, str_replace(PATH, '', $action_file), $class_name));
-        }
-
+    
         if (!$this->validateParamsCount($class_name, 'run', $params)) { cmsCore::error404(); }
-
+    
         // сохраняем название текущего экшена
         $this->setCurrentAction($action_name);
-
+    
         $action_object = new $class_name($this, $params);
 
         // проверяем разрешен ли прямой вызов экшена
@@ -691,17 +727,28 @@ class cmsController {
             $result = call_user_func_array(array($this, $method_name), $params);
 
         } else {
-
-            // если метода хука нет, проверяем наличие его в отдельном файле
-            $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
-
-            if (is_readable($hook_file)){
-
-                // вызываем хук из отдельного файла
-                $result = $this->runExternalHook($event_name, $params);
-
+            $has_hook = false;
+            if ($this->ns) {
+                $hook_class = $this->ns.'\\hooks\\'.$event_name;
+                if (class_exists($hook_class)) {
+                    $result = $this->runExternalHook($event_name, $params);
+                    $has_hook = true;
+                }
             } else {
 
+                // если метода хука нет, проверяем наличие его в отдельном файле
+                $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
+
+                if (is_readable($hook_file)){
+
+                    // вызываем хук из отдельного файла
+                    $result = $this->runExternalHook($event_name, $params);
+                    $has_hook = true;
+                }
+
+            }
+
+            if (!$has_hook) {
                 // хука нет вообще, возвращаем данные запроса без изменений
                 if($default === null){
                     return $this->request->getData();
@@ -727,14 +774,18 @@ class cmsController {
      */
     public function runExternalHook($event_name, $params = array()){
 
-        $class_name = 'on' . string_to_camel('_', $this->name) . string_to_camel('_', $event_name);
+        if ($this->ns) {
+            $class_name = $this->ns.'\\hooks\\'.$event_name;
+        } else {
+            $class_name = 'on' . string_to_camel('_', $this->name) . string_to_camel('_', $event_name);
+            
+            if (!class_exists($class_name, false)) {
 
-        if (!class_exists($class_name, false)){
+                $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
 
-            $hook_file = $this->root_path . 'hooks/' . $event_name . '.php';
+                include_once $hook_file;
 
-            include_once $hook_file;
-
+            }
         }
 
         $hook_object = new $class_name($this);
@@ -776,13 +827,22 @@ class cmsController {
      */
     public function getForm($form_name, $params = false, $path_prefix = ''){
 
-        $form_file = $this->root_path . $path_prefix . 'forms/form_' . $form_name . '.php';
-        $_form_name = $this->name . $form_name;
+        if ($this->ns) {
+            $form_class = $this->ns.'\\forms\\form_'.$form_name;
+            $form = cmsForm::createForm($form_class, $params, $this);
 
-        $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+            if($form === false){
+                return cmsCore::error('Form not found: '.$form_class);
+            }
+        } else {
+            $form_file = $this->root_path . $path_prefix . 'forms/form_' . $form_name . '.php';
+            $_form_name = $this->name . $form_name;
 
-        if($form === false){
-            return cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $form_file));
+            $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+
+            if($form === false){
+                return cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $form_file));
+            }
         }
 
         if(is_string($form)){
@@ -797,10 +857,17 @@ class cmsController {
 
     public function getControllerForm($controller, $form_name, $params = false){
 
-        $form_file = $this->cms_config->root_path.'system/controllers/'.$controller.'/forms/form_'.$form_name.'.php';
-        $_form_name = $controller . $form_name;
+        $ns = cmsController::getExtControllerNamespace($controller);
+        if ($ns) {
+            $form_class = $ns.'\\forms\\form_'.$form_name;
 
-        $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+            $form = cmsForm::createForm($form_class, $params, $this);
+        } else {
+            $form_file = $this->cms_config->root_path.'system/controllers/'.$controller.'/forms/form_'.$form_name.'.php';
+            $_form_name = $controller . $form_name;
+
+            $form = cmsForm::getForm($form_file, $_form_name, $params, $this);
+        }
 
         if($form === false){
             cmsCore::error(ERR_FILE_NOT_FOUND . ': '. str_replace(PATH, '', $form_file));
@@ -1451,6 +1518,59 @@ class cmsController {
 
         return ERR_VALIDATE_INVALID;
 
+    }
+
+    static function getExtControllerNamespace($controllerName) {
+        $extControllers = cmsConfig::getExtControllers();
+        return $extControllers[$controllerName] ?? false;
+    }
+
+    static function getExtControllerName($namespace = null) {
+        if (!isset($namespace)) {
+            $class_name = get_called_class();
+            $namespace = str_replace('\\frontend', '', $class_name);
+            if ($namespace == $class_name) return false;
+        }
+        $extControllers = cmsConfig::getExtControllers();
+        foreach ($extControllers as $controllerName => $controllerNs) {
+            if ($controllerNs == $namespace) {
+                return $controllerName;
+            }        
+        } 
+        return false;
+    }
+
+    /**
+     * Создает и возвращает объект контроллера
+     *
+     * @param cmsRequest $request
+     * @return static
+     */
+    static function getInstance($request = null) {        
+        return new static($request);
+    }   
+
+    static function getControllerRootPath($controllerName) {
+        if (false !== ($ns = self::getExtControllerNamespace($controllerName))) {
+            $manifest = self::getExtControllerManifest($controllerName);
+            if (method_exists($manifest, 'getRootPath')) {
+                return $manifest->getRootPath();
+            } else {
+                $r = new ReflectionClass($ns . '\\manifest');
+                $filename = $r->getFileName();
+                if (!$filename) cmsCore::error('External controller ' . $controllerName . ' not found in namespace ' . $ns);
+                return realpath(dirname($filename));
+            }
+        }
+        $config = cmsConfig::getInstance();
+        return $config->root_path . 'system/controllers/'.$controllerName.'/';
+    }
+
+    static function getExtControllerManifest($controllerName) {
+        if (false !== ($ns = self::getExtControllerNamespace($controllerName))) {
+            $manifestClass = $ns.'\\manifest';
+            return new $manifestClass();
+        }
     }
 
 }
