@@ -826,10 +826,11 @@ function initMultyTabs(selector, tab_wrap_field){
 		});
     });
 }
-function initTabs(selector){
+function initTabs(selector, activeTabIndex){
+    if (typeof activeTabIndex === 'undefined') activeTabIndex = 0;
     $(selector+' .tab').hide();
-    $(selector+' .tab').eq(0).show();
-    $(selector+' ul.tabbed > li').eq(0).addClass('active');
+    $(selector+' .tab').eq(activeTabIndex).show();
+    $(selector+' ul.tabbed > li').eq(activeTabIndex).addClass('active');
     $(selector+' ul.tabbed > li > a').click(function(){
         $(selector+' li').removeClass('active');
         $(this).parent('li').addClass('active');
