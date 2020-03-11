@@ -542,9 +542,9 @@ class cmsCore {
                 $hooks = $manifest['hooks'] ?? null;
             }
 
-            if (empty($manifest['hooks']) || !is_array($manifest['hooks'])) { continue; }
+            if (empty($hooks) || !is_array($hooks)) { continue; }
 
-            foreach ($manifest['hooks'] as $hook) {
+            foreach ($hooks as $hook) {
 
                 $manifests_events[ $controller_name ][$index] = $hook;
 
