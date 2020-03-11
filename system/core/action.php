@@ -1,7 +1,14 @@
 <?php
+
+/**
+ * @mixin cmsController
+ */
+
 class cmsAction {
 
+    /** @var cmsController */
     protected $controller;
+
     protected $params;
 
     protected $extended_langs = [];

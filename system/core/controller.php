@@ -1,13 +1,34 @@
 <?php
+
+/**
+ * Class cmsController
+ * @property cmsCore $cms_core
+ * @property cmsDatabase $cms_database
+ * @property cmsTemplate $cms_template
+ * @property modelUsers $model_users
+ * @property cmsForm $cms_form
+ * @property cmsModel $model
+ * @property moderation $controller_moderation
+ * @property modelModeration $model_moderation
+ * @property cmsUser $cms_user
+ * @property messages $controller_messages
+ */
+
 class cmsController {
 
     private static $controllers;
     private static $mapping;
 
+    /** @var string $name Имя контроллера */
     public $name;
+
     public $title;
 	public $model = null;
+
+    /** @var cmsRequest */
     public $request;
+
+    /** @var string $current_action Имя текущего экшена */
     public $current_action;
     public $current_template_name;
     public $current_params;
@@ -832,7 +853,7 @@ class cmsController {
         if ($params) {
             if (!is_array($params)){
                 $params = [$params];
-            }
+        }
             foreach ($params as $p) {
                 $args[] = $p;
             }

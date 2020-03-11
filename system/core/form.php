@@ -10,6 +10,7 @@ class cmsForm {
 
     protected $disabled_fields = array();
 
+    /** @var cmsController $controller */
     protected $controller;
 
     protected $data = [];
